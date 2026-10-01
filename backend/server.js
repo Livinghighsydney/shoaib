@@ -21,7 +21,7 @@ app.use('/api/content', require('./routes/content'));
 if (isProd) {
   const frontendDist = path.join(__dirname, '../frontend/dist');
   app.use(express.static(frontendDist));
-  app.get('*', (_req, res) => res.sendFile(path.join(frontendDist, 'index.html')));
+  app.get('/{*splat}', (_req, res) => res.sendFile(path.join(frontendDist, 'index.html')));
 }
 
 app.listen(PORT, () => {
