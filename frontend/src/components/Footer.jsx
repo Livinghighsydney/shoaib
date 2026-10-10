@@ -90,7 +90,7 @@ export default function Footer() {
           </div>
 
           {/* Email */}
-          <div className="text-right">
+          <div className="text-left md:text-right">
             <h4 className="text-white text-sm font-semibold tracking-widest uppercase mb-5">Email Address</h4>
             <EditableText
               value={footer.email}

@@ -104,7 +104,7 @@ export default function About() {
             />
 
             {/* Cards grid */}
-            <div className="mt-10 grid grid-cols-2 gap-4">
+            <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 gap-4">
               {cards.map((card, i) => (
                 <div key={card.id || i} className="relative group bg-white border border-[#e0e0e0] rounded p-5 shadow-sm">
                   <div className="w-8 h-8 bg-accent/10 rounded flex items-center justify-center mb-3">

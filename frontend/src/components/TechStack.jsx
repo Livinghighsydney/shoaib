@@ -94,7 +94,7 @@ export default function TechStack() {
             <p className="text-text-muted text-xs tracking-[0.3em] uppercase mb-3">
               <EditableText value={crafted.title} onSave={v => updateCrafted('title', v)} as="span" />
             </p>
-            <h2 className="font-display text-5xl sm:text-7xl lg:text-8xl text-white tracking-wider leading-none">
+            <h2 className="font-display text-4xl sm:text-6xl lg:text-8xl text-white tracking-wider leading-none px-4 sm:px-0">
               <EditableText value={crafted.subtitle} onSave={v => updateCrafted('subtitle', v)} as="span" />
             </h2>
           </motion.div>

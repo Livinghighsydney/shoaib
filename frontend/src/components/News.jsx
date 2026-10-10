@@ -180,7 +180,7 @@ export default function News() {
                   animate="center"
                   exit="exit"
                   transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
-                  className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center min-h-[260px]"
+                  className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-20 items-center min-h-[260px]"
                 >
                   {/* Left */}
                   <div>
@@ -208,7 +208,7 @@ export default function News() {
                   </div>
 
                   {/* Right */}
-                  <div className="border-l border-border pl-8 lg:pl-12">
+                  <div className="border-l-0 lg:border-l border-t lg:border-t-0 border-border pt-6 lg:pt-0 pl-0 lg:pl-12">
                     <p className="text-text-secondary text-base leading-relaxed">
                       {item.description}
                     </p>

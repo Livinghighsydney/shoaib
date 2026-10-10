@@ -59,17 +59,17 @@ export default function Experience() {
                 transition={{ duration: 0.6, delay: i * 0.1 }}
                 className="relative group border-b border-border py-8 last:border-b-0"
               >
-                <div className="flex gap-6 items-start">
+                <div className="flex gap-4 items-start">
                   {/* Number */}
                   <EditableText
                     value={item.number}
                     onSave={v => updateItem(i, 'number', v)}
                     as="span"
-                    className="font-display text-5xl text-white/10 leading-none flex-shrink-0 w-14"
+                    className="font-display text-4xl lg:text-5xl text-white/10 leading-none flex-shrink-0 w-10 lg:w-14"
                   />
 
                   <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2 mb-2">
                       <EditableText
                         value={item.role}
                         onSave={v => updateItem(i, 'role', v)}
