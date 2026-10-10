@@ -20,7 +20,7 @@ export default function Projects() {
   };
   const addItem = () => update('items', [...projects.items, {
     id: Date.now(), title: 'New Project', description: 'Project description.',
-    tech: ['React'], image: null, link: '#',
+    tech: [], image: null, link: '#',
   }]);
   const removeItem = (i) => update('items', projects.items.filter((_, idx) => idx !== i));
   const handleImageUpload = async (i, file) => {
@@ -93,10 +93,34 @@ export default function Projects() {
                 />
                 <div className="flex flex-wrap gap-2">
                   {project.tech.map((t, ti) => (
-                    <span key={ti} className="text-xs text-text-secondary border border-border px-2 py-0.5 rounded-full">
-                      {t}
-                    </span>
+                    isEditMode ? (
+                      <div key={ti} className="relative group flex items-center gap-0.5">
+                        <EditableText
+                          value={t}
+                          onSave={v => updateItem(i, 'tech', project.tech.map((tt, tIdx) => tIdx === ti ? v : tt))}
+                          as="span"
+                          className="text-xs text-text-secondary border border-border px-2 py-0.5 rounded-full"
+                        />
+                        <button
+                          onClick={() => updateItem(i, 'tech', project.tech.filter((_, tIdx) => tIdx !== ti))}
+                          className="text-accent/60 hover:text-accent text-xs leading-none"
+                          title="Remove tag"
+                        >×</button>
+                      </div>
+                    ) : (
+                      <span key={ti} className="text-xs text-text-secondary border border-border px-2 py-0.5 rounded-full">
+                        {t}
+                      </span>
+                    )
                   ))}
+                  {isEditMode && (
+                    <button
+                      onClick={() => updateItem(i, 'tech', [...project.tech, 'New'])}
+                      className="text-xs text-accent border border-dashed border-accent/40 px-2 py-0.5 rounded-full hover:bg-accent-dim transition-colors"
+                    >
+                      + tag
+                    </button>
+                  )}
                 </div>
               </div>
 

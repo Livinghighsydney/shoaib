@@ -33,6 +33,9 @@ const initialContent = {
     greeting: 'PhD Researcher · Engineer · Consultant',
     titleLine1: 'RESEARCH',
     titleLine2: 'ENGINEER',
+    titleY: 33,
+    photoX: 0,
+    photoY: 0,
     description: 'Functional Safety · Industrial IoT · AI-Driven Resilience for Cyber-Physical Systems. Bridging rigorous academic research with real-world engineering impact. Open to postdoc, research, and consulting roles.',
     cta1: 'Download CV',
     cta2: 'View LinkedIn',
@@ -204,6 +207,48 @@ const initialContent = {
     ],
   },
 
+  news: {
+    heading: 'News & Events',
+    items: [
+      {
+        id: 1,
+        label: 'Publication',
+        title: 'Paper Published in Journal of Systems Architecture — Elsevier 2025',
+        description: 'Developed the first analytical framework for timing-parameter configuration in the openSAFETY protocol over wired Ethernet and IEEE 802.11. Validated on a real physical testbed. Published in Elsevier Journal of Systems Architecture (2025).',
+        date: 'March 2025',
+        link: 'https://doi.org/10.1016/j.sysarc.2025.103605',
+        linkLabel: 'Read Paper',
+      },
+      {
+        id: 2,
+        label: 'Conference',
+        title: 'Paper Accepted at IEEE WFCS 2026',
+        description: 'Research on functional-safety communication over IEEE 802.11 wireless networks accepted at the IEEE Workshop on Factory Communication Systems (WFCS) 2026, a premier venue for industrial communication research.',
+        date: 'June 2026',
+        link: 'https://ieeexplore.ieee.org/document/11511646',
+        linkLabel: 'View on IEEE',
+      },
+      {
+        id: 3,
+        label: 'Research Visit',
+        title: 'Visiting Researcher at ITHACA Lab, University of Western Macedonia',
+        description: 'Completed a funded visiting research position in Greece (Apr–Sep 2025) designing a trust-based DoS resilience framework for safety-critical industrial networks. Co-authored a peer-reviewed paper submitted to IEEE.',
+        date: 'Sep 2025',
+        link: '#',
+        linkLabel: 'Learn More',
+      },
+      {
+        id: 4,
+        label: 'Open to Work',
+        title: 'Seeking Postdoc, Research & Consulting Opportunities',
+        description: 'PhD completed at Scuola Superiore Sant\'Anna, Pisa. Now actively seeking postdoctoral positions, research roles, and industrial consulting projects in Functional Safety, Industrial IoT, Embedded Systems, and AI for CPS.',
+        date: 'Oct 2025',
+        link: '#contact',
+        linkLabel: 'Get in Touch',
+      },
+    ],
+  },
+
   testimonials: {
     items: [
       {
@@ -250,8 +295,8 @@ const initialContent = {
     marqueeText: 'FUNCTIONAL SAFETY · INDUSTRIAL IOT · EMBEDDED SYSTEMS · AI RESILIENCE · OPEN TO COLLABORATE · ',
     socialLinks: [
       { label: 'LinkedIn', href: 'https://www.linkedin.com/in/shoaib-zafar-10a2a6ba/' },
-      { label: 'GitHub',   href: 'https://github.com/shoaibzafar'                      },
-      { label: 'ORCID',    href: 'https://orcid.org/0000-0002-0000-0000'               },
+      { label: 'GitHub',   href: ''                                                    },
+      { label: 'ORCID',    href: ''                                                    },
     ],
   },
 

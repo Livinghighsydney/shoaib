@@ -16,6 +16,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/content', require('./routes/content'));
+app.use('/api/contact', require('./routes/contact'));
 
 // In production serve the built React app and handle SPA routing
 if (isProd) {

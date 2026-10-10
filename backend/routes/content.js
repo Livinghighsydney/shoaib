@@ -58,4 +58,19 @@ router.post('/upload/image', auth, upload.single('image'), (req, res) => {
   res.json({ url: `/uploads/${req.file.filename}` });
 });
 
+const fileUpload = multer({
+  storage,
+  limits: { fileSize: 20 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    ['.pdf', '.doc', '.docx'].includes(ext) ? cb(null, true) : cb(new Error('Only PDF/DOC files allowed'));
+  },
+});
+
+// POST upload file/CV (admin only)
+router.post('/upload/file', auth, fileUpload.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+  res.json({ url: `/uploads/${req.file.filename}` });
+});
+
 module.exports = router;

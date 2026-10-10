@@ -18,7 +18,7 @@ export default function Footer() {
     const totalWidth = el.scrollWidth / 2;
     gsap.to(el, {
       x: -totalWidth,
-      duration: 25,
+      duration: 60,
       ease: 'none',
       repeat: -1,
     });

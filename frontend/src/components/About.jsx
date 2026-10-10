@@ -72,6 +72,15 @@ export default function About() {
               )}
             </div>
 
+          </motion.div>
+
+          {/* Right */}
+          <motion.div
+            initial={{ opacity: 0, x: 40 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ duration: 0.7, delay: 0.2 }}
+          >
             {/* Decorative line */}
             <div className="flex items-center gap-4 mb-6">
               <div className="w-8 h-px bg-accent" />
@@ -82,18 +91,10 @@ export default function About() {
               value={about.heading}
               onSave={v => update('heading', v)}
               as="h2"
-              className="text-light-text text-3xl lg:text-4xl font-semibold leading-tight"
+              className="text-light-text text-3xl lg:text-4xl font-semibold leading-tight mb-6"
               multiline
             />
-          </motion.div>
 
-          {/* Right */}
-          <motion.div
-            initial={{ opacity: 0, x: 40 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true, margin: '-80px' }}
-            transition={{ duration: 0.7, delay: 0.2 }}
-          >
             <EditableText
               value={about.description}
               onSave={v => update('description', v)}

@@ -47,8 +47,20 @@ export function ContentProvider({ children }) {
     return data.url;
   }, [token]);
 
+  const uploadFile = useCallback(async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const { data } = await axios.post('/api/content/upload/file', formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return data.url;
+  }, [token]);
+
   return (
-    <ContentContext.Provider value={{ content, loading, updateSection, uploadImage, fetchContent }}>
+    <ContentContext.Provider value={{ content, loading, updateSection, uploadImage, uploadFile, fetchContent }}>
       {children}
     </ContentContext.Provider>
   );

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Send } from 'lucide-react';
+import axios from 'axios';
 import { useContent } from '../context/ContentContext';
 import { EditableText, EditableChips } from './admin/EditableField';
 import toast from 'react-hot-toast';
@@ -19,11 +20,16 @@ export default function Contact() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSending(true);
-    await new Promise(r => setTimeout(r, 1200));
-    toast.success('Message sent! I\'ll get back to you soon.');
-    setForm({ name: '', email: '', subject: '', message: '' });
-    setSelected('');
-    setSending(false);
+    try {
+      await axios.post('/api/contact', { ...form, projectType: selected });
+      toast.success("Message sent! I'll get back to you soon.");
+      setForm({ name: '', email: '', subject: '', message: '' });
+      setSelected('');
+    } catch {
+      toast.error('Failed to send message. Please try again.');
+    } finally {
+      setSending(false);
+    }
   };
 
   return (

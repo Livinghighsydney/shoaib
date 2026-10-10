@@ -1,11 +1,12 @@
+import { useRef, useEffect, useState } from 'react';
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
-import { Download, ArrowUpRight } from 'lucide-react';
+import { Download, ArrowUpRight, Move } from 'lucide-react';
 import { useContent } from '../context/ContentContext';
-import { EditableText, EditableImage, EditableURL } from './admin/EditableField';
+import { EditableText, EditableImage, EditableURL, EditableFile } from './admin/EditableField';
 import { useAuth } from '../context/AuthContext';
 
 export default function Hero() {
-  const { content, updateSection, uploadImage } = useContent();
+  const { content, updateSection, uploadImage, uploadFile } = useContent();
   const { isEditMode } = useAuth();
   const hero = content?.hero;
 
@@ -17,12 +18,43 @@ export default function Hero() {
   const glowLeft = useTransform(springX, v => `${v * 100}%`);
   const glowTop  = useTransform(springY, v => `${v * 100}%`);
 
+  // Draggable positions — same pattern as Testimonials
+  const sectionRef   = useRef();
+  const heroRef      = useRef(null);   // tracks latest hero for debounced save
+  const debounceRef  = useRef(null);
+  const initialized  = useRef(false);
+
+  const [photoPos, setPhotoPos] = useState({ x: 0, y: 0 });
+  const [titleY,   setTitleY]   = useState(33);
+  const photoPosRef = useRef({ x: 0, y: 0 });
+  const titleYRef   = useRef(33);
+
+  useEffect(() => { heroRef.current = hero; }, [hero]);
+
+  // Init from DB once — never re-sync so in-progress drags survive saves
+  useEffect(() => {
+    if (hero && !initialized.current) {
+      const pp = { x: hero.photoX ?? 0, y: hero.photoY ?? 0 };
+      const ty = hero.titleY ?? 33;
+      photoPosRef.current = pp;
+      titleYRef.current   = ty;
+      setPhotoPos(pp);
+      setTitleY(ty);
+      initialized.current = true;
+    }
+  }, [hero]);
+
   if (!hero) return null;
 
   const update = (field, value) => updateSection('hero', { ...hero, [field]: value });
+
   const handlePhotoUpload = async (file) => {
     const url = await uploadImage(file);
     update('photo', url);
+  };
+  const handleCVUpload = async (file) => {
+    const url = await uploadFile(file);
+    update('cta1Link', url);
   };
 
   const handleMouseMove = (e) => {
@@ -31,9 +63,51 @@ export default function Hero() {
     mouseY.set((e.clientY - r.top)  / r.height);
   };
 
+  // Debounced DB save — same 700ms window as Testimonials
+  const scheduleSave = () => {
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      if (!heroRef.current) return;
+      updateSection('hero', {
+        ...heroRef.current,
+        photoX: photoPosRef.current.x,
+        photoY: photoPosRef.current.y,
+        titleY: titleYRef.current,
+      }, true);
+    }, 700);
+  };
+
+  const handlePhotoDragEnd = (_, info) => {
+    if (!sectionRef.current) return;
+    const box     = sectionRef.current.getBoundingClientRect();
+    const curLeft = (photoPosRef.current.x / 100) * box.width;
+    const curTop  = (photoPosRef.current.y / 100) * box.height;
+    const newLeft = Math.max(0, Math.min(box.width  - 320, curLeft + info.offset.x));
+    const newTop  = Math.max(0, Math.min(box.height,       curTop  + info.offset.y));
+    const pp = {
+      x: parseFloat(((newLeft / box.width)  * 100).toFixed(2)),
+      y: parseFloat(((newTop  / box.height) * 100).toFixed(2)),
+    };
+    photoPosRef.current = pp;
+    setPhotoPos(pp);
+    scheduleSave();
+  };
+
+  const handleTitleDragEnd = (_, info) => {
+    if (!sectionRef.current) return;
+    const box    = sectionRef.current.getBoundingClientRect();
+    const curTop = (titleYRef.current / 100) * box.height;
+    const newTop = Math.max(0, Math.min(box.height - 120, curTop + info.offset.y));
+    const ty     = parseFloat(((newTop / box.height) * 100).toFixed(2));
+    titleYRef.current = ty;
+    setTitleY(ty);
+    scheduleSave();
+  };
+
   return (
     <section
       id="home"
+      ref={sectionRef}
       className="relative min-h-screen overflow-hidden"
       style={{ background: 'radial-gradient(ellipse at 55% 30%, #3d1515 0%, #2a1010 22%, #180808 48%, #0d0606 68%, #0a0a0a 100%)' }}
       onMouseMove={handleMouseMove}
@@ -72,34 +146,55 @@ export default function Hero() {
         }}
       />
 
-      {/* ─── LAYER 1 · Big title behind everything (z-1) ──────────────── */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 1.1, delay: 0.2 }}
-        className="absolute inset-0 z-[1] flex flex-col items-center justify-center
-                   select-none pointer-events-none"
-      >
-        <h1
-          className="font-display text-white text-center leading-[0.82] tracking-[0.01em]"
-          style={{ fontSize: 'clamp(72px, 16vw, 240px)' }}
+      {/* ─── LAYER 1 · Big draggable title (z-1) ──────────────────────── */}
+      <div className="absolute inset-0 z-[1] pointer-events-none select-none">
+        <motion.div
+          key={`title-y-${Math.round(titleY)}`}
+          drag={isEditMode ? 'y' : false}
+          dragMomentum={false}
+          dragElastic={0}
+          dragConstraints={sectionRef}
+          onDragEnd={handleTitleDragEnd}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1.1, delay: 0.2 }}
+          whileDrag={{ cursor: 'grabbing' }}
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            top: `${titleY}%`,
+            cursor: isEditMode ? 'grab' : 'default',
+            touchAction: 'none',
+            pointerEvents: isEditMode ? 'auto' : 'none',
+          }}
         >
-          <EditableText
-            value={hero.titleLine1}
-            onSave={v => update('titleLine1', v)}
-            as="span"
-            className="block"
-          />
-          <EditableText
-            value={hero.titleLine2}
-            onSave={v => update('titleLine2', v)}
-            as="span"
-            className="block"
-          />
-        </h1>
-      </motion.div>
+          <h1
+            className="font-display text-white text-center leading-[0.82] tracking-[0.01em]"
+            style={{ fontSize: 'clamp(72px, 16vw, 240px)' }}
+          >
+            <EditableText
+              value={hero.titleLine1}
+              onSave={v => update('titleLine1', v)}
+              as="span"
+              className="block"
+            />
+            <EditableText
+              value={hero.titleLine2}
+              onSave={v => update('titleLine2', v)}
+              as="span"
+              className="block"
+            />
+          </h1>
+          {isEditMode && (
+            <p className="text-center text-[10px] text-accent/50 mt-2 tracking-widest pointer-events-none">
+              ↕ drag to reposition
+            </p>
+          )}
+        </motion.div>
+      </div>
 
-      {/* ─── LAYER 2 · Left gradient shield (z-5) ─────────────────────
+      {/* ─── LAYER 2 · Left gradient shield (z-5) ───────────────────────
           Fades the big title out on the left so the text panel is clean */}
       <div
         className="absolute top-0 left-0 bottom-0 z-[5] pointer-events-none"
@@ -110,27 +205,40 @@ export default function Hero() {
         }}
       />
 
-      {/* ─── LAYER 3 · Photo (z-10) ───────────────────────────────────
-          Wrapper div forces width. w-full h-auto on <img> → natural ratio.
-          personal.jpeg is 1122×1402 (ratio 0.8), so at 320px wide → 400px tall. */}
-      <div
-        className="absolute bottom-0 z-[10] pointer-events-none select-none"
-        style={{ left: '50%', transform: 'translateX(-50%)', width: '320px' }}
+      {/* ─── LAYER 3 · Draggable photo (z-10) ───────────────────────────
+          Key changes after drag saves new coords → remount resets FM transform */}
+      <motion.div
+        key={`photo-${Math.round(photoPos.x)}-${Math.round(photoPos.y)}`}
+        drag={isEditMode}
+        dragMomentum={false}
+        dragElastic={0}
+        dragConstraints={sectionRef}
+        onDragEnd={handlePhotoDragEnd}
+        whileDrag={{ cursor: 'grabbing', zIndex: 99 }}
+        className="select-none"
+        style={{
+          position: 'absolute',
+          left: `${photoPos.x}%`,
+          top:  `${photoPos.y}%`,
+          width: '320px',
+          zIndex: 10,
+          cursor: isEditMode ? 'grab' : 'default',
+          touchAction: 'none',
+          pointerEvents: isEditMode ? 'auto' : 'none',
+        }}
       >
-        <motion.div
-          initial={{ opacity: 0, y: 60 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1, delay: 0.5, ease: 'easeOut' }}
-          className="pointer-events-auto"
-        >
-          <EditableImage
-            src={hero.photo}
-            alt="Shoaib Zafar"
-            className="w-full h-auto block"
-            onUpload={handlePhotoUpload}
-          />
-        </motion.div>
-      </div>
+        <EditableImage
+          src={hero.photo}
+          alt="Shoaib Zafar"
+          className="w-full h-auto block"
+          onUpload={handlePhotoUpload}
+        />
+        {isEditMode && (
+          <div className="absolute top-2 right-2 bg-black/50 backdrop-blur-sm rounded-full p-1.5 pointer-events-none">
+            <Move size={12} className="text-white/70" />
+          </div>
+        )}
+      </motion.div>
 
       {/* Bottom fade — blends photo into section (z-11) */}
       <div
@@ -142,7 +250,7 @@ export default function Hero() {
       />
 
       {/* ─── LAYER 4 · Left text content (z-20) ──────────────────────── */}
-      <div className="absolute top-0 left-0 bottom-0 z-[20] flex items-center pl-10 lg:pl-16 pt-16">
+      <div className="absolute top-0 left-0 bottom-0 z-[20] flex items-start pl-10 lg:pl-16 pt-[55vh]">
         <motion.div
           initial={{ opacity: 0, x: -40 }}
           animate={{ opacity: 1, x: 0 }}
@@ -167,14 +275,21 @@ export default function Hero() {
           </p>
 
           <div className="flex flex-col gap-3">
-            <EditableURL
-              href={hero.cta1Link}
-              onSaveHref={v => update('cta1Link', v)}
-              className="inline-flex items-center gap-2 bg-accent hover:bg-accent-light text-white text-sm font-medium px-5 py-2.5 rounded transition-colors w-fit"
-            >
-              <Download size={14} />
-              <EditableText value={hero.cta1} onSave={v => update('cta1', v)} as="span" />
-            </EditableURL>
+            <div>
+              <EditableURL
+                href={hero.cta1Link}
+                onSaveHref={v => update('cta1Link', v)}
+                className="inline-flex items-center gap-2 bg-accent hover:bg-accent-light text-white text-sm font-medium px-5 py-2.5 rounded transition-colors w-fit"
+              >
+                <Download size={14} />
+                <EditableText value={hero.cta1} onSave={v => update('cta1', v)} as="span" />
+              </EditableURL>
+              <EditableFile
+                onUpload={handleCVUpload}
+                accept=".pdf,.doc,.docx"
+                label="Upload New CV"
+              />
+            </div>
             <EditableURL
               href={hero.cta2Link}
               onSaveHref={v => update('cta2Link', v)}

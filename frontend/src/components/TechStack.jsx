@@ -1,32 +1,59 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useContent } from '../context/ContentContext';
 import { EditableText } from './admin/EditableField';
 import { useAuth } from '../context/AuthContext';
+import IconPickerModal, { IconSvg } from './admin/IconPickerModal';
+import { TECH_ICON_MAP } from '../data/techIcons';
 
-const ICON_MAP = {
-  python: '🐍',
-  react: '⚛️',
-  nodejs: '🟢',
-  cpp: '⚙️',
-  linux: '🐧',
-  vscode: '💻',
-  postgresql: '🐘',
-  mysql: '🗄️',
-  docker: '🐳',
-  git: '🔀',
-  default: '🔧',
+const FALLBACK = { type: 'emoji', key: 'default', name: 'Custom', emoji: '🔧' };
+
+// Maps legacy icon keys from the DB seed to the new simple-icons slugs
+const LEGACY_KEY_MAP = {
+  python:    'python',
+  cpp:       'cplusplus',
+  linux:     'linux',
+  raspberry: 'raspberrypi',
+  plc:       'plc',
+  ai:        'lstm',
+  matlab:    'matlab',
+  vscode:    'vscode',
+  shield:    'opensafety',
+  default:   'default',
+  react:     'react',
+  nodejs:    'nodedotjs',
+  postgresql:'postgresql',
+  mysql:     'mysql',
+  docker:    'docker',
+  git:       'git',
+  // DB seed keys for current tech stack
+  'embedded c / c++': 'cplusplus',
+  'linux kernel':     'linux',
+  'plc automation':   'plc',
+  'ai integration':   'lstm',
+  'cyber security':   'dosresil',
+  'safety-critical systems': 'functsafety',
+  'research publications':   'ieee',
 };
+
+function TechIcon({ iconKey, size = 20 }) {
+  const resolved = LEGACY_KEY_MAP[iconKey] || iconKey;
+  const icon = TECH_ICON_MAP[resolved] || TECH_ICON_MAP[resolved?.toLowerCase()] || FALLBACK;
+  return <IconSvg icon={icon} size={size} />;
+}
 
 export default function TechStack() {
   const { content, updateSection } = useContent();
   const { isEditMode } = useAuth();
-  const crafted = content?.crafted;
+  const crafted   = content?.crafted;
   const techStack = content?.techStack;
+
+  const [pickerIdx, setPickerIdx] = useState(null);
 
   if (!crafted || !techStack) return null;
 
-  const updateCrafted = (field, value) => updateSection('crafted', { ...crafted, [field]: value });
-  const updateTech = (field, value) => updateSection('techStack', { ...techStack, [field]: value });
+  const updateCrafted  = (field, value) => updateSection('crafted',   { ...crafted,   [field]: value });
+  const updateTech     = (field, value) => updateSection('techStack',  { ...techStack, [field]: value });
 
   const addTechItem = () => {
     updateSection('techStack', {
@@ -45,6 +72,12 @@ export default function TechStack() {
   const updateTechItem = (i, field, value) => {
     const items = techStack.items.map((item, idx) => idx === i ? { ...item, [field]: value } : item);
     updateSection('techStack', { ...techStack, items });
+  };
+
+  const handleIconSelect = (iconKey) => {
+    if (pickerIdx === null) return;
+    updateTechItem(pickerIdx, 'icon', iconKey);
+    setPickerIdx(null);
   };
 
   return (
@@ -126,7 +159,14 @@ export default function TechStack() {
                 className="relative group"
               >
                 <div className="flex items-center gap-2 bg-card border border-border hover:border-accent/40 transition-colors px-5 py-3 rounded-full">
-                  <span className="text-lg">{ICON_MAP[item.icon] || ICON_MAP.default}</span>
+                  <button
+                    onClick={() => isEditMode && setPickerIdx(i)}
+                    className={isEditMode ? 'cursor-pointer hover:opacity-70 transition-opacity' : 'cursor-default pointer-events-none'}
+                    title={isEditMode ? 'Click to change icon' : undefined}
+                  >
+                    <TechIcon iconKey={item.icon} size={20} />
+                  </button>
+
                   <EditableText
                     value={item.name}
                     onSave={v => updateTechItem(i, 'name', v)}
@@ -134,6 +174,7 @@ export default function TechStack() {
                     className="text-text-secondary text-sm font-medium"
                   />
                 </div>
+
                 {isEditMode && (
                   <button
                     onClick={() => removeTechItem(i)}
@@ -144,6 +185,7 @@ export default function TechStack() {
                 )}
               </motion.div>
             ))}
+
             {isEditMode && (
               <button
                 onClick={addTechItem}
@@ -155,6 +197,14 @@ export default function TechStack() {
           </div>
         </div>
       </section>
+
+      {/* Icon picker modal */}
+      {pickerIdx !== null && (
+        <IconPickerModal
+          onSelect={handleIconSelect}
+          onClose={() => setPickerIdx(null)}
+        />
+      )}
     </>
   );
 }

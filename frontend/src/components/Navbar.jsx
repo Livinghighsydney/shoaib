@@ -91,7 +91,7 @@ export default function Navbar() {
             href="#contact"
             className="bg-accent hover:bg-accent-light text-white text-sm font-medium px-5 py-2 rounded transition-colors"
           >
-            Contact Us
+            Contact Me
           </a>
           <a
             href="/admin"
@@ -133,7 +133,7 @@ export default function Navbar() {
             href="#contact"
             className="bg-accent text-white text-sm font-medium px-5 py-2 rounded text-center"
           >
-            Contact Us
+            Contact Me
           </a>
         </div>
       )}

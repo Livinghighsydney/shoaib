@@ -106,6 +106,32 @@ export function EditableURL({ href, onSaveHref, children, className = '' }) {
   );
 }
 
+/* ─── EditableFile ─────────────────────────────────────────────────────────── */
+export function EditableFile({ onUpload, accept = '*', label = 'Upload File' }) {
+  const { isEditMode } = useAuth();
+  const fileRef = useRef();
+
+  if (!isEditMode) return null;
+
+  return (
+    <>
+      <button
+        onClick={() => fileRef.current?.click()}
+        className="mt-1 flex items-center gap-1 text-[10px] text-accent border border-dashed border-accent/40 px-2 py-1 rounded hover:bg-accent-dim transition-colors"
+      >
+        ↑ {label}
+      </button>
+      <input
+        ref={fileRef}
+        type="file"
+        accept={accept}
+        onChange={e => { const f = e.target.files[0]; if (f) onUpload(f); }}
+        className="hidden"
+      />
+    </>
+  );
+}
+
 /* ─── EditableList ─────────────────────────────────────────────────────────── */
 export function EditableList({ items, onSave, renderItem, newItemTemplate, className = '' }) {
   const { isEditMode } = useAuth();
