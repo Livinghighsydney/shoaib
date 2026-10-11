@@ -38,21 +38,8 @@ export default function Navbar() {
       }`}
     >
       <div className="max-w-7xl mx-auto px-6 lg:px-10 h-16 flex items-center justify-between">
-        {/* Logo */}
-        <div className="flex flex-col leading-none">
-          <EditableText
-            value={nav.logo}
-            onSave={v => updateNav('logo', v)}
-            as="span"
-            className="text-white font-semibold text-base tracking-wide"
-          />
-          <EditableText
-            value={nav.tagline}
-            onSave={v => updateNav('tagline', v)}
-            as="span"
-            className="text-text-muted text-[10px] tracking-widest uppercase"
-          />
-        </div>
+        {/* Logo removed per design update */}
+        <div />
 
         {/* Desktop Links */}
         <nav className="hidden md:flex items-center gap-6 flex-wrap">
