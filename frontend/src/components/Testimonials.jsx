@@ -47,50 +47,58 @@ function hexLuma(hex) {
 /* ── Bubble (text) ─────────────────────────────────────────────────────────── */
 function Bubble({ item, i, isEditMode, isSelected, containerRef, onSelect, onUpdateItem, onPhotoUpload, onRemove }) {
   const { posX, posY, size, color, fontSize, fontWeight, fontStyle } = getBubbleLayout(item, i);
-  const didMove = useRef(false);
+  const [livePos, setLivePos] = useState(null);
 
   const light     = hexLuma(color) > 128;
   const textColor = light ? '#222222' : '#ffffff';
   const muteColor = light ? '#666666' : 'rgba(255,255,255,0.65)';
 
-  const handleDragEnd = (e, info) => {
-    if (!containerRef.current || !didMove.current) return;
-    const box     = containerRef.current.getBoundingClientRect();
-    const curLeft = (posX / 100) * box.width;
-    const curTop  = (posY / 100) * box.height;
-    const newLeft = Math.max(0, Math.min(box.width  - size, curLeft + info.offset.x));
-    const newTop  = Math.max(0, Math.min(box.height - size, curTop  + info.offset.y));
-    onUpdateItem({
-      posX: parseFloat(((newLeft / box.width)  * 100).toFixed(2)),
-      posY: parseFloat(((newTop  / box.height) * 100).toFixed(2)),
-    });
+  // Drag — only initiated from the Move handle (raw pointer events, no FM drag)
+  const startDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!containerRef.current) return;
+    const box      = containerRef.current.getBoundingClientRect();
+    const startX   = e.clientX;
+    const startY   = e.clientY;
+    const startLeft = (posX / 100) * box.width;
+    const startTop  = (posY / 100) * box.height;
+    const onMove = (me) => {
+      setLivePos({
+        left: Math.max(0, Math.min(box.width  - size, startLeft + (me.clientX - startX))),
+        top:  Math.max(0, Math.min(box.height - size, startTop  + (me.clientY - startY))),
+      });
+    };
+    const onUp = (me) => {
+      const newLeft = Math.max(0, Math.min(box.width  - size, startLeft + (me.clientX - startX)));
+      const newTop  = Math.max(0, Math.min(box.height - size, startTop  + (me.clientY - startY)));
+      setLivePos(null);
+      onUpdateItem({
+        posX: parseFloat(((newLeft / box.width)  * 100).toFixed(2)),
+        posY: parseFloat(((newTop  / box.height) * 100).toFixed(2)),
+      });
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
   };
 
   return (
     <motion.div
-      key={`b${i}-${Math.round(posX)}-${Math.round(posY)}`}
-      drag={isEditMode}
-      dragMomentum={false}
-      dragElastic={0}
-      dragConstraints={containerRef}
-      onDragStart={() => { didMove.current = false; }}
-      onDrag={() => { didMove.current = true; }}
-      onDragEnd={handleDragEnd}
-      onClick={() => { if (isEditMode && !didMove.current) onSelect(); }}
-      whileDrag={{ scale: 1.04, zIndex: 99 }}
+      onClick={() => { if (isEditMode) onSelect(); }}
       initial={{ opacity: 0, scale: 0.75 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.55, delay: isEditMode ? 0 : i * 0.12 }}
       style={{
         position: 'absolute',
-        left: `${posX}%`,
-        top:  `${posY}%`,
+        left: livePos ? livePos.left : `${posX}%`,
+        top:  livePos ? livePos.top  : `${posY}%`,
         zIndex: isSelected ? 20 : isEditMode ? 10 : 1,
-        cursor: isEditMode ? 'grab' : 'default',
-        touchAction: 'none',
+        cursor: 'default',
       }}
     >
-      <div style={{ width: size, height: size, transition: 'width 0.12s ease, height 0.12s ease' }}>
+      <div style={{ position: 'relative', width: size, height: size, transition: 'width 0.12s ease, height 0.12s ease' }}>
         <div
           className="w-full h-full rounded-full flex flex-col items-center justify-center text-center relative select-none overflow-hidden"
           style={{
@@ -122,24 +130,31 @@ function Bubble({ item, i, isEditMode, isSelected, containerRef, onSelect, onUpd
           </div>
         </div>
 
-        {isEditMode && isSelected && (
-          <div className="absolute -top-2 -left-2 w-6 h-6 bg-accent rounded-full flex items-center justify-center shadow-lg z-20 pointer-events-none">
-            <Check size={11} className="text-white" />
-          </div>
-        )}
         {isEditMode && (
-          <button
-            className="absolute -top-2 -right-2 w-7 h-7 bg-red-600/90 hover:bg-red-500 rounded-full flex items-center justify-center shadow-lg z-30 transition-colors"
-            onPointerDown={e => e.stopPropagation()}
-            onClick={e => { e.stopPropagation(); onRemove(); }}
-          >
-            <Trash2 size={12} className="text-white" />
-          </button>
-        )}
-        {isEditMode && !isSelected && (
-          <div className="absolute top-2 right-2 bg-black/35 backdrop-blur-sm rounded-full p-1.5 z-20 pointer-events-none">
-            <Move size={10} className="text-white/70" />
-          </div>
+          <>
+            {/* Move handle — ONLY this initiates drag */}
+            <div
+              className="absolute -top-3 -left-3 w-7 h-7 bg-black/60 backdrop-blur-sm rounded-full flex items-center justify-center z-30 cursor-grab active:cursor-grabbing shadow-lg"
+              style={{ touchAction: 'none' }}
+              onPointerDown={startDrag}
+            >
+              <Move size={12} className="text-white" />
+            </div>
+            {/* Trash */}
+            <button
+              className="absolute -top-2 -right-2 w-7 h-7 bg-red-600/90 hover:bg-red-500 rounded-full flex items-center justify-center shadow-lg z-30 transition-colors"
+              onPointerDown={e => e.stopPropagation()}
+              onClick={e => { e.stopPropagation(); onRemove(); }}
+            >
+              <Trash2 size={12} className="text-white" />
+            </button>
+            {/* Selected indicator */}
+            {isSelected && (
+              <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-6 h-6 bg-accent rounded-full flex items-center justify-center shadow-lg z-20 pointer-events-none">
+                <Check size={11} className="text-white" />
+              </div>
+            )}
+          </>
         )}
       </div>
     </motion.div>
