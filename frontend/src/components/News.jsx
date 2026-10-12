@@ -75,7 +75,7 @@ export default function News() {
   const item = items[Math.min(current, items.length - 1)];
 
   return (
-    <section id="news" className="bg-secondary py-20 section-divider overflow-hidden">
+    <section id="news" className="bg-secondary py-20 section-divider">
       <div className="max-w-7xl mx-auto px-6 lg:px-10">
 
         {/* Section label */}
@@ -197,6 +197,9 @@ export default function News() {
               onMouseEnter={() => { hoveredRef.current = true; }}
               onMouseLeave={() => { hoveredRef.current = false; }}
             >
+              {/* overflow-hidden here (not on section) so animation clips within
+                  this wrapper only — images below can still show at full height */}
+              <div className="overflow-hidden">
               <AnimatePresence mode="wait" custom={dir}>
                 <motion.div
                   key={current}
@@ -206,7 +209,7 @@ export default function News() {
                   animate="center"
                   exit="exit"
                   transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
-                  className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-20 items-center min-h-[260px]"
+                  className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-20 items-start min-h-[260px]"
                 >
                   {/* Left */}
                   <div>
@@ -237,8 +240,8 @@ export default function News() {
                   <div className="border-l-0 lg:border-l border-t lg:border-t-0 border-border pt-6 lg:pt-0 pl-0 lg:pl-12">
                     {item.image ? (
                       <div className="flex flex-col gap-4">
-                        <div className="rounded-xl overflow-hidden" style={{ aspectRatio: '16/9', background: '#0a0a0a' }}>
-                          <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
+                        <div className="rounded-xl overflow-hidden" style={{ background: '#0a0a0a' }}>
+                          <img src={item.image} alt={item.title} className="w-full h-auto block" />
                         </div>
                         <p className="text-text-secondary text-sm leading-relaxed">{item.description}</p>
                       </div>
@@ -250,6 +253,7 @@ export default function News() {
                   </div>
                 </motion.div>
               </AnimatePresence>
+              </div>{/* end overflow-hidden wrapper */}
 
               {/* Controls row */}
               <div className="flex items-center justify-between mt-10">
