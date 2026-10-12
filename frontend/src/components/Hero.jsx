@@ -14,13 +14,14 @@ const CORNER_CLS = {
   br: 'bottom-0 right-0  translate-x-1/2  translate-y-1/2',
 };
 
-function RightPhotoSlider({ photos, isEditMode, onAddPhoto, onRemoveCurrent }) {
+function RightPhotoSlider({ photos, isEditMode, onAddPhotos, onRemoveCurrent }) {
   const [idx, setIdx] = useState(0);
   const safeIdx = photos.length > 0 ? Math.min(idx, photos.length - 1) : 0;
 
+  // Auto-advance every 2.5s, paused in edit mode
   useEffect(() => {
     if (photos.length <= 1 || isEditMode) return;
-    const id = setInterval(() => setIdx(i => (i + 1) % photos.length), 4500);
+    const id = setInterval(() => setIdx(i => (i + 1) % photos.length), 2500);
     return () => clearInterval(id);
   }, [photos.length, isEditMode]);
 
@@ -28,15 +29,34 @@ function RightPhotoSlider({ photos, isEditMode, onAddPhoto, onRemoveCurrent }) {
     if (idx >= photos.length && photos.length > 0) setIdx(photos.length - 1);
   }, [photos.length, idx]);
 
+  const fileInput = (
+    <label
+      className="w-7 h-7 rounded-lg bg-accent/15 border border-dashed border-accent/50 text-accent hover:bg-accent/25 text-[15px] cursor-pointer flex items-center justify-center transition-colors"
+      title="Add images — select multiple at once"
+    >
+      +
+      <input type="file" accept="image/*" multiple className="hidden"
+        onChange={e => { if (e.target.files?.length) { onAddPhotos(Array.from(e.target.files)); e.target.value = ''; } }}
+      />
+    </label>
+  );
+
   if (photos.length === 0) {
     return (
       <div
         className="w-full border-2 border-dashed border-white/20 rounded-2xl flex flex-col items-center justify-center gap-3 bg-white/[0.03]"
-        style={{ aspectRatio: '4/5', minHeight: 200 }}
+        style={{ aspectRatio: '4/3', minHeight: 200 }}
         onPointerDown={e => e.stopPropagation()}
       >
         <p className="text-white/30 text-xs pointer-events-none">Add images for slider</p>
-        <EditableFile onUpload={onAddPhoto} accept="image/*" label="+ Add Image" />
+        <label
+          className="flex items-center gap-1 text-[10px] text-accent border border-dashed border-accent/40 px-3 py-1.5 rounded hover:bg-accent-dim transition-colors cursor-pointer"
+        >
+          ↑ Add Images
+          <input type="file" accept="image/*" multiple className="hidden"
+            onChange={e => { if (e.target.files?.length) { onAddPhotos(Array.from(e.target.files)); e.target.value = ''; } }}
+          />
+        </label>
       </div>
     );
   }
@@ -44,65 +64,74 @@ function RightPhotoSlider({ photos, isEditMode, onAddPhoto, onRemoveCurrent }) {
   return (
     <div
       className="relative w-full overflow-hidden rounded-2xl"
-      style={{ aspectRatio: '4/5', boxShadow: '0 25px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(139,26,16,0.12)' }}
+      style={{
+        aspectRatio: '4/3',
+        backgroundColor: '#0a0a0a',
+        boxShadow: '0 25px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(139,26,16,0.12)',
+      }}
     >
-      {/* Crossfade with Ken Burns slow zoom */}
+      {/* Crossfade + Ken Burns — snappier */}
       <AnimatePresence mode="sync">
         <motion.img
           key={safeIdx}
           src={photos[safeIdx]}
           alt=""
-          initial={{ opacity: 0, scale: 1.08 }}
+          initial={{ opacity: 0, scale: 1.04 }}
           animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, transition: { duration: 0.8, ease: 'easeIn' } }}
-          transition={{ opacity: { duration: 1.0, ease: 'easeOut' }, scale: { duration: 6, ease: 'linear' } }}
-          className="absolute inset-0 w-full h-full object-cover"
+          exit={{ opacity: 0, transition: { duration: 0.35, ease: 'easeIn' } }}
+          transition={{ opacity: { duration: 0.4, ease: 'easeOut' }, scale: { duration: 3, ease: 'linear' } }}
+          className="absolute inset-0 w-full h-full object-contain"
           style={{ pointerEvents: 'none' }}
         />
       </AnimatePresence>
 
-      {/* Bottom gradient — blends into dark hero background */}
+      {/* Edge blending overlays */}
       <div className="absolute inset-x-0 bottom-0 pointer-events-none z-10"
-        style={{ height: '55%', background: 'linear-gradient(to top, rgba(10,10,10,0.88) 0%, rgba(10,10,10,0.3) 50%, transparent 100%)' }} />
-      {/* Left edge vignette */}
+        style={{ height: '40%', background: 'linear-gradient(to top, rgba(10,10,10,0.75) 0%, rgba(10,10,10,0.2) 50%, transparent 100%)' }} />
       <div className="absolute inset-y-0 left-0 pointer-events-none z-10"
-        style={{ width: '22%', background: 'linear-gradient(to right, rgba(10,6,6,0.38), transparent)' }} />
+        style={{ width: '18%', background: 'linear-gradient(to right, rgba(10,6,6,0.32), transparent)' }} />
 
-      {/* Indicators — pill dots in view mode, trash buttons in edit mode */}
-      {(isEditMode ? photos.length > 0 : photos.length > 1) && (
+      {/* Edit mode: numbered row at top + trash on active + add button */}
+      {isEditMode && (
         <div
-          className={`absolute bottom-3 left-0 right-0 flex justify-center gap-2 z-20 ${isEditMode ? 'pointer-events-auto' : 'pointer-events-none'}`}
-          onPointerDown={isEditMode ? e => e.stopPropagation() : undefined}
+          className="absolute top-2 left-0 right-0 flex justify-center gap-1.5 z-30 px-2"
+          onPointerDown={e => e.stopPropagation()}
         >
           {photos.map((_, i) => (
-            isEditMode ? (
-              <button key={i}
-                onClick={() => onRemoveCurrent(i)}
-                title={`Remove photo ${i + 1}`}
-                className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200 border ${
+            <div key={i} className="relative">
+              <button
+                onClick={() => setIdx(i)}
+                className={`w-7 h-7 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center ${
                   i === safeIdx
-                    ? 'bg-red-700/80 border-red-500/50 scale-110'
-                    : 'bg-black/60 border-white/20 hover:bg-red-700/60 hover:border-red-500/40'
+                    ? 'bg-white text-black shadow-lg'
+                    : 'bg-black/60 text-white/60 border border-white/15 hover:bg-white/20 hover:text-white'
                 }`}
               >
-                <Trash2 size={9} className="text-white" />
+                {i + 1}
               </button>
-            ) : (
-              <div key={i}
-                className={`rounded-full transition-all duration-500 ${i === safeIdx ? 'w-5 h-1.5 bg-white/90' : 'w-1.5 h-1.5 bg-white/35'}`}
-              />
-            )
+              {/* Trash at top-right of the active number only */}
+              {i === safeIdx && (
+                <button
+                  onClick={() => onRemoveCurrent(i)}
+                  className="absolute -top-2 -right-2 w-5 h-5 bg-red-600 hover:bg-red-500 rounded-full flex items-center justify-center shadow-lg transition-colors z-40"
+                >
+                  <Trash2 size={8} className="text-white" />
+                </button>
+              )}
+            </div>
           ))}
+          {fileInput}
         </div>
       )}
 
-      {/* Edit controls — add photo only (delete is on the dots above) */}
-      {isEditMode && (
-        <div
-          className="absolute top-10 right-2 z-30"
-          onPointerDown={e => e.stopPropagation()}
-        >
-          <EditableFile onUpload={onAddPhoto} accept="image/*" label="+ Add" />
+      {/* View mode: pill dots at bottom */}
+      {!isEditMode && photos.length > 1 && (
+        <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 z-20 pointer-events-none">
+          {photos.map((_, i) => (
+            <div key={i}
+              className={`rounded-full transition-all duration-500 ${i === safeIdx ? 'w-5 h-1.5 bg-white/90' : 'w-1.5 h-1.5 bg-white/35'}`}
+            />
+          ))}
         </div>
       )}
     </div>
@@ -292,10 +321,10 @@ export default function Hero() {
     update('photo', url);
   };
 
-  const handleRightPhotoUpload = async (f) => {
-    const url = await uploadImage(f);
+  const handleRightPhotosUpload = async (files) => {
+    const urls = await Promise.all(files.map(f => uploadImage(f)));
     const current = heroRef.current?.rightPhotos ?? (heroRef.current?.rightPhoto ? [heroRef.current.rightPhoto] : []);
-    update('rightPhotos', [...current, url]);
+    update('rightPhotos', [...current, ...urls]);
   };
 
   const handleRemoveRightPhoto = (i) => {
@@ -468,7 +497,7 @@ export default function Hero() {
             <RightPhotoSlider
               photos={rightPhotos}
               isEditMode={isEditMode}
-              onAddPhoto={handleRightPhotoUpload}
+              onAddPhotos={handleRightPhotosUpload}
               onRemoveCurrent={handleRemoveRightPhoto}
             />
 
