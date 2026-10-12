@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Trash2, Move, Check, X, ImageIcon, MessageSquare } from 'lucide-react';
 import { useContent } from '../context/ContentContext';
@@ -78,11 +78,9 @@ function Bubble({ item, i, isEditMode, isSelected, containerRef, onSelect, onUpd
       onDragEnd={handleDragEnd}
       onClick={() => { if (isEditMode && !didMove.current) onSelect(); }}
       whileDrag={{ scale: 1.04, zIndex: 99 }}
-      initial={isEditMode ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.75 }}
-      whileInView={isEditMode ? undefined : { opacity: 1, scale: 1 }}
-      viewport={{ once: true, margin: '-60px' }}
-      animate={isEditMode ? { opacity: 1, scale: 1 } : undefined}
-      transition={{ duration: 0.55, delay: isEditMode ? 0 : i * 0.18 }}
+      initial={{ opacity: 0, scale: 0.75 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.55, delay: isEditMode ? 0 : i * 0.12 }}
       style={{
         position: 'absolute',
         left: `${posX}%`,
@@ -486,8 +484,9 @@ export default function Testimonials() {
         };
     const next = [...localItemsRef.current, newItem];
     localItemsRef.current = next;
+    clearTimeout(debounceRef.current);
     setLocalItems(next);
-    scheduleSave();
+    updateSection('testimonials', { ...testimonialsRef.current, items: next });
   };
 
   const handlePhotoUpload = async (i, file) => {
@@ -496,6 +495,23 @@ export default function Testimonials() {
   };
 
   const selectedItem = selectedIdx !== null ? localItems[selectedIdx] : null;
+
+  // Canvas grows to fit all items — same height in both modes to prevent
+  // position shift when toggling edit mode (items use posY% of container height)
+  const canvasHeight = useMemo(() => {
+    const PADDING = 100;
+    const MIN     = 600;
+    let h = MIN;
+    for (const t of localItems) {
+      const posY  = typeof t.posY  === 'number' ? t.posY  : 10;
+      const size  = typeof t.size  === 'number' ? t.size  : 220;
+      // photo cards: estimate height as 1.3× width; bubbles: size = diameter
+      const itemH = t.type === 'image' ? size * 1.3 : size;
+      const frac  = (100 - posY) / 100;
+      if (frac > 0.05) h = Math.max(h, Math.ceil(itemH / frac) + PADDING);
+    }
+    return h;
+  }, [localItems]);
 
   return (
     <section
@@ -528,12 +544,12 @@ export default function Testimonials() {
           </p>
         )}
 
-        {/* Canvas */}
+        {/* Canvas — height computed from item positions, same in edit & view mode
+            so posY% doesn't shift items when toggling. Grows smoothly as needed. */}
         <div
           ref={containerRef}
-          className={`relative ${isEditMode
-            ? 'min-h-[700px] border-2 border-dashed border-accent/15 rounded-2xl'
-            : 'min-h-[540px]'}`}
+          className={`relative ${isEditMode ? 'border-2 border-dashed border-accent/15 rounded-2xl' : ''}`}
+          style={{ minHeight: canvasHeight, transition: 'min-height 0.35s ease' }}
           onClick={e => { if (e.target === containerRef.current) setSelectedIdx(null); }}
         >
           {localItems.map((t, i) => (
