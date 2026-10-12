@@ -193,25 +193,38 @@ export default function Hero() {
     saveTimer.current = setTimeout(persistAll, 700);
   };
 
-  // ── Drag handlers ──────────────────────────────────────────────────────────
+  // ── Drag handlers — raw pointer events (same pattern as resize handles) ──────
+  // Using raw pointermove/pointerup instead of FM drag so:
+  // 1. Only the Move handle starts drag (no conflict with clicking the image)
+  // 2. Reliable in production (FM's drag prop has known prod build issues)
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
-  const onPhotoDragEnd = () => {
-    if (!sectionRef.current) return;
-    const { width: W, height: H } = sectionRef.current.getBoundingClientRect();
-    const sz = photoSize.get();
-    photoX.set(clamp(photoX.get(), 0, W - sz));
-    photoY.set(clamp(photoY.get(), 0, H - 80));
-    schedulePersist();
+  const startPhotoDrag = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    const x0 = e.clientX, y0 = e.clientY, px0 = photoX.get(), py0 = photoY.get();
+    const onMove = (me) => {
+      const { width: W, height: H } = sectionRef.current.getBoundingClientRect();
+      const sz = photoSize.get();
+      photoX.set(clamp(px0 + (me.clientX - x0), 0, W - sz));
+      photoY.set(clamp(py0 + (me.clientY - y0), 0, H - 80));
+    };
+    const onUp = () => { persistAll(); window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
   };
 
-  const onRightDragEnd = () => {
-    if (!sectionRef.current) return;
-    const { width: W, height: H } = sectionRef.current.getBoundingClientRect();
-    const sz = rightSize.get();
-    rightX.set(clamp(rightX.get(), 0, W - sz));
-    rightY.set(clamp(rightY.get(), 0, H - 80));
-    schedulePersist();
+  const startRightDrag = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    const x0 = e.clientX, y0 = e.clientY, px0 = rightX.get(), py0 = rightY.get();
+    const onMove = (me) => {
+      const { width: W, height: H } = sectionRef.current.getBoundingClientRect();
+      const sz = rightSize.get();
+      rightX.set(clamp(px0 + (me.clientX - x0), 0, W - sz));
+      rightY.set(clamp(py0 + (me.clientY - y0), 0, H - 80));
+    };
+    const onUp = () => { persistAll(); window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
   };
 
   const onTitleDragEnd = (_, info) => {
@@ -414,35 +427,27 @@ export default function Hero() {
             the photo opens file picker; Move handle lets events through to start drag.
             Width/x/y are motion values → all updates bypass React reconciler. */}
         <motion.div
-          drag={isEditMode}
-          dragMomentum={false}
-          dragElastic={0}
-          onDragEnd={onPhotoDragEnd}
           className="select-none"
           style={{
             position: 'absolute', left: 0, top: 0,
             x: photoX, y: photoY, width: photoSize,
             zIndex: isEditMode ? 30 : 10,
-            cursor: isEditMode ? 'grab' : 'default',
             touchAction: 'none',
             pointerEvents: isEditMode ? 'auto' : 'none',
           }}
         >
-          {/* Stop propagation on image so clicking it doesn't start drag */}
-          <div onPointerDown={isEditMode ? e => e.stopPropagation() : undefined}>
-            <EditableImage src={hero.photo} alt="Shoaib Zafar" className="w-full h-auto block" onUpload={handlePhotoUpload} />
-          </div>
+          <EditableImage src={hero.photo} alt="Shoaib Zafar" className="w-full h-auto block" onUpload={handlePhotoUpload} />
 
           {isEditMode && (
             <>
-              {/* Move handle — no stopPropagation, so pointerdown bubbles to motion.div and starts drag */}
+              {/* Move handle — raw pointermove drag, only this handle moves the photo */}
               <div
-                className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm rounded-full p-2 cursor-grab active:cursor-grabbing pointer-events-auto"
+                className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm rounded-full p-2 cursor-grab active:cursor-grabbing"
                 style={{ touchAction: 'none' }}
+                onPointerDown={startPhotoDrag}
               >
                 <Move size={14} className="text-white" />
               </div>
-              {/* Corner resize handles */}
               <ResizeHandles sizeMV={photoSize} xMV={photoX} yMV={photoY} />
             </>
           )}
@@ -451,36 +456,29 @@ export default function Hero() {
         {/* Layer 3b · Right photo slider — hidden when empty and not in edit mode */}
         {(rightPhotos.length > 0 || isEditMode) && (
           <motion.div
-            drag={isEditMode}
-            dragMomentum={false}
-            dragElastic={0}
-            onDragEnd={onRightDragEnd}
             className="select-none"
             style={{
               position: 'absolute', left: 0, top: 0,
               x: rightX, y: rightY, width: rightSize,
               zIndex: isEditMode ? 30 : 15,
-              cursor: isEditMode ? 'grab' : 'default',
               touchAction: 'none',
               pointerEvents: isEditMode ? 'auto' : 'none',
             }}
           >
-            {/* stopProp wrapper prevents slider clicks from starting drag */}
-            <div onPointerDown={isEditMode ? e => e.stopPropagation() : undefined}>
-              <RightPhotoSlider
-                photos={rightPhotos}
-                isEditMode={isEditMode}
-                onAddPhoto={handleRightPhotoUpload}
-                onRemoveCurrent={handleRemoveRightPhoto}
-              />
-            </div>
+            <RightPhotoSlider
+              photos={rightPhotos}
+              isEditMode={isEditMode}
+              onAddPhoto={handleRightPhotoUpload}
+              onRemoveCurrent={handleRemoveRightPhoto}
+            />
 
             {isEditMode && (
               <>
-                {/* Move handle — no stopProp, bubbles to motion.div, starts drag */}
+                {/* Move handle — raw pointermove drag, only this handle moves the box */}
                 <div
                   className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm rounded-full p-2 cursor-grab active:cursor-grabbing"
                   style={{ touchAction: 'none' }}
+                  onPointerDown={startRightDrag}
                 >
                   <Move size={14} className="text-white" />
                 </div>
