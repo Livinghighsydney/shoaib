@@ -150,12 +150,31 @@ function Bubble({ item, i, isEditMode, isSelected, containerRef, onSelect, onUpd
 
 /* ── PhotoCard (image testimonial) ─────────────────────────────────────────── */
 function PhotoCard({ item, i, isEditMode, isSelected, containerRef, onSelect, onUpdateItem, onPhotoUpload, onRemove }) {
-  const didMove = useRef(false);
-  const cardIdx = i; // used for rotation
+  const didMove   = useRef(false);
+  const [liveSize, setLiveSize] = useState(null);
   const posX    = typeof item.posX === 'number' ? item.posX : (CARD_DEFAULTS[i % CARD_DEFAULTS.length]?.posX ?? 10 + i * 20);
   const posY    = typeof item.posY === 'number' ? item.posY : (CARD_DEFAULTS[i % CARD_DEFAULTS.length]?.posY ?? 5);
-  const size    = typeof item.size === 'number' ? item.size : 220;
-  const rotation = CARD_ROTATIONS[cardIdx % CARD_ROTATIONS.length];
+  const size    = liveSize ?? (typeof item.size === 'number' ? item.size : 220);
+  const rotation = CARD_ROTATIONS[i % CARD_ROTATIONS.length];
+
+  const startResize = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const startX    = e.clientX;
+    const startSize = size;
+    const onMove = (me) => {
+      setLiveSize(Math.max(120, Math.min(420, startSize + (me.clientX - startX))));
+    };
+    const onUp = (me) => {
+      const final = Math.max(120, Math.min(420, startSize + (me.clientX - startX)));
+      setLiveSize(null);
+      onUpdateItem({ size: final });
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  };
 
   const handleDragEnd = (e, info) => {
     if (!containerRef.current || !didMove.current) return;
@@ -229,13 +248,6 @@ function PhotoCard({ item, i, isEditMode, isSelected, containerRef, onSelect, on
             ) : null}
           </div>
 
-          {/* Caption strip */}
-          <div className="px-3 py-2.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: '#0f0f0f' }}>
-            <EditableText value={item.name || 'Name'} onSave={v => onUpdateItem({ name: v })} as="p"
-              className="text-white/90 font-semibold leading-tight" style={{ fontSize: 11 }} />
-            <EditableText value={item.role || 'Role · Source'} onSave={v => onUpdateItem({ role: v })} as="p"
-              className="text-white/40 leading-tight mt-0.5" style={{ fontSize: 9 }} />
-          </div>
         </div>
 
         {/* Edit overlays — outside overflow:hidden so they extend past card edge */}
@@ -248,6 +260,12 @@ function PhotoCard({ item, i, isEditMode, isSelected, containerRef, onSelect, on
             >
               <Trash2 size={12} className="text-white" />
             </button>
+            {/* SE resize handle */}
+            <div
+              className="absolute w-3.5 h-3.5 bg-white border-2 border-red-700 rounded-full z-30 cursor-se-resize"
+              style={{ bottom: -6, right: -6, touchAction: 'none' }}
+              onPointerDown={startResize}
+            />
             {isSelected && (
               <div className="absolute -top-2 -left-2 w-6 h-6 bg-accent rounded-full flex items-center justify-center shadow-lg z-20 pointer-events-none">
                 <Check size={11} className="text-white" />
@@ -569,7 +587,7 @@ export default function Testimonials() {
               <MessageSquare size={14} /> Text Bubble
             </button>
             <button onClick={() => addItem('image')}
-              className="border border-dashed border-white/20 px-5 py-2.5 rounded-full text-white/50 hover:text-white/80 hover:border-white/40 transition-colors text-sm flex items-center gap-2">
+              className="border border-dashed border-accent/25 px-5 py-2.5 rounded-full text-accent/70 hover:text-accent hover:border-accent/50 hover:bg-accent-dim transition-colors text-sm flex items-center gap-2">
               <ImageIcon size={14} /> Photo Card
             </button>
           </div>

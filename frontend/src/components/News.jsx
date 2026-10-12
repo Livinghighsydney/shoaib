@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Plus, Trash2, ArrowUpRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Trash2, ArrowUpRight, ImageIcon, X } from 'lucide-react';
 import { useContent } from '../context/ContentContext';
 import { EditableText, EditableURL } from './admin/EditableField';
 import { useAuth } from '../context/AuthContext';
@@ -14,7 +14,7 @@ const variants = {
 };
 
 export default function News() {
-  const { content, updateSection } = useContent();
+  const { content, updateSection, uploadImage } = useContent();
   const { isEditMode } = useAuth();
   const news = content?.news;
 
@@ -147,6 +147,32 @@ export default function News() {
                   </div>
                 </div>
 
+                {/* Image attachment */}
+                <div className="mt-4 pt-4 border-t border-border flex items-center gap-4 flex-wrap">
+                  <span className="text-text-muted text-xs shrink-0">Image:</span>
+                  {it.image ? (
+                    <div className="relative group/img">
+                      <img src={it.image} alt="" className="h-16 w-28 object-cover rounded-lg border border-border" />
+                      <button
+                        onClick={() => updateItem(i, { image: null })}
+                        className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-600/90 hover:bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity"
+                      >
+                        <X size={10} className="text-white" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex items-center gap-1.5 text-xs text-accent/70 hover:text-accent border border-dashed border-accent/25 hover:border-accent/50 px-3 py-1.5 rounded-lg cursor-pointer transition-colors">
+                      <ImageIcon size={12} /> Attach image
+                      <input type="file" accept="image/*" className="hidden" onChange={async e => {
+                        if (e.target.files[0]) {
+                          const url = await uploadImage(e.target.files[0]);
+                          updateItem(i, { image: url });
+                        }
+                      }} />
+                    </label>
+                  )}
+                </div>
+
                 <button
                   onClick={() => removeItem(i)}
                   className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -209,9 +235,18 @@ export default function News() {
 
                   {/* Right */}
                   <div className="border-l-0 lg:border-l border-t lg:border-t-0 border-border pt-6 lg:pt-0 pl-0 lg:pl-12">
-                    <p className="text-text-secondary text-base leading-relaxed">
-                      {item.description}
-                    </p>
+                    {item.image ? (
+                      <div className="flex flex-col gap-4">
+                        <div className="rounded-xl overflow-hidden" style={{ aspectRatio: '16/9', background: '#0a0a0a' }}>
+                          <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
+                        </div>
+                        <p className="text-text-secondary text-sm leading-relaxed">{item.description}</p>
+                      </div>
+                    ) : (
+                      <p className="text-text-secondary text-base leading-relaxed">
+                        {item.description}
+                      </p>
+                    )}
                   </div>
                 </motion.div>
               </AnimatePresence>
