@@ -2,17 +2,23 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 const isProd = process.env.NODE_ENV === 'production';
+
+// UPLOADS_PATH env var → Railway Volume path (e.g. /data/uploads)
+// Falls back to local uploads/ folder in development
+const UPLOADS_DIR = process.env.UPLOADS_PATH || path.join(__dirname, 'uploads');
+fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
 app.use(cors({
   origin: isProd ? true : ['http://localhost:5173', 'http://localhost:4173'],
   credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(UPLOADS_DIR));
 
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/content', require('./routes/content'));

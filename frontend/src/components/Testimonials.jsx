@@ -40,7 +40,7 @@ function hexLuma(hex) {
    position) so the motion.div remounts fresh, resetting Framer Motion's
    internal transform to 0.  This prevents the "teleport on second drag" bug
    without any useMotionValue / useLayoutEffect complexity.               */
-function Bubble({ item, i, isEditMode, isSelected, containerRef, onSelect, onUpdateItem, onPhotoUpload }) {
+function Bubble({ item, i, isEditMode, isSelected, containerRef, onSelect, onUpdateItem, onPhotoUpload, onRemove }) {
   const { posX, posY, size, color, fontSize, fontWeight, fontStyle } = getLayout(item, i);
   const didMove = useRef(false);
 
@@ -74,7 +74,7 @@ function Bubble({ item, i, isEditMode, isSelected, containerRef, onSelect, onUpd
       onDragStart={() => { didMove.current = false; }}
       onDrag={() => { didMove.current = true; }}
       onDragEnd={handleDragEnd}
-      onTap={() => { if (isEditMode && !didMove.current) onSelect(); }}
+      onClick={() => { if (isEditMode && !didMove.current) onSelect(); }}
       whileDrag={{ scale: 1.04, zIndex: 99 }}
       /* entrance animation only outside edit mode */
       initial={isEditMode ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.75 }}
@@ -139,6 +139,16 @@ function Bubble({ item, i, isEditMode, isSelected, containerRef, onSelect, onUpd
           <div className="absolute -top-2 -left-2 w-6 h-6 bg-accent rounded-full flex items-center justify-center shadow-lg z-20 pointer-events-none">
             <Check size={11} className="text-white" />
           </div>
+        )}
+        {/* Direct delete button — always visible in edit mode, no selection needed */}
+        {isEditMode && (
+          <button
+            className="absolute -top-2 -right-2 w-7 h-7 bg-red-600/90 hover:bg-red-500 rounded-full flex items-center justify-center shadow-lg z-30 transition-colors"
+            onPointerDown={e => e.stopPropagation()}
+            onClick={e => { e.stopPropagation(); onRemove(); }}
+          >
+            <Trash2 size={12} className="text-white" />
+          </button>
         )}
         {/* Drag hint on unselected bubbles */}
         {isEditMode && !isSelected && (
@@ -366,6 +376,7 @@ export default function Testimonials() {
               onSelect={() => setSelectedIdx(prev => prev === i ? null : i)}
               onUpdateItem={patch => updateItem(i, patch)}
               onPhotoUpload={file => handlePhotoUpload(i, file)}
+              onRemove={() => removeItem(i)}
             />
           ))}
         </div>

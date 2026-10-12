@@ -1,5 +1,5 @@
-import { useRef, useEffect, useLayoutEffect } from 'react';
-import { motion, useMotionValue, useSpring, useTransform, useDragControls } from 'framer-motion';
+import { useRef, useState, useEffect, useLayoutEffect } from 'react';
+import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import { Download, ArrowUpRight, Move, Trash2 } from 'lucide-react';
 import { useContent } from '../context/ContentContext';
 import { EditableText, EditableImage, EditableURL, EditableFile } from './admin/EditableField';
@@ -13,6 +13,101 @@ const CORNER_CLS = {
   bl: 'bottom-0 left-0 -translate-x-1/2  translate-y-1/2',
   br: 'bottom-0 right-0  translate-x-1/2  translate-y-1/2',
 };
+
+function RightPhotoSlider({ photos, isEditMode, onAddPhoto, onRemoveCurrent }) {
+  const [idx, setIdx] = useState(0);
+  const safeIdx = photos.length > 0 ? Math.min(idx, photos.length - 1) : 0;
+
+  useEffect(() => {
+    if (photos.length <= 1 || isEditMode) return;
+    const id = setInterval(() => setIdx(i => (i + 1) % photos.length), 4500);
+    return () => clearInterval(id);
+  }, [photos.length, isEditMode]);
+
+  useEffect(() => {
+    if (idx >= photos.length && photos.length > 0) setIdx(photos.length - 1);
+  }, [photos.length, idx]);
+
+  if (photos.length === 0) {
+    return (
+      <div
+        className="w-full border-2 border-dashed border-white/20 rounded-2xl flex flex-col items-center justify-center gap-3 bg-white/[0.03]"
+        style={{ aspectRatio: '4/5', minHeight: 200 }}
+        onPointerDown={e => e.stopPropagation()}
+      >
+        <p className="text-white/30 text-xs pointer-events-none">Add images for slider</p>
+        <EditableFile onUpload={onAddPhoto} accept="image/*" label="+ Add Image" />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="relative w-full overflow-hidden rounded-2xl"
+      style={{ aspectRatio: '4/5', boxShadow: '0 25px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(139,26,16,0.12)' }}
+    >
+      {/* Crossfade with Ken Burns slow zoom */}
+      <AnimatePresence mode="sync">
+        <motion.img
+          key={safeIdx}
+          src={photos[safeIdx]}
+          alt=""
+          initial={{ opacity: 0, scale: 1.08 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, transition: { duration: 0.8, ease: 'easeIn' } }}
+          transition={{ opacity: { duration: 1.0, ease: 'easeOut' }, scale: { duration: 6, ease: 'linear' } }}
+          className="absolute inset-0 w-full h-full object-cover"
+          style={{ pointerEvents: 'none' }}
+        />
+      </AnimatePresence>
+
+      {/* Bottom gradient — blends into dark hero background */}
+      <div className="absolute inset-x-0 bottom-0 pointer-events-none z-10"
+        style={{ height: '55%', background: 'linear-gradient(to top, rgba(10,10,10,0.88) 0%, rgba(10,10,10,0.3) 50%, transparent 100%)' }} />
+      {/* Left edge vignette */}
+      <div className="absolute inset-y-0 left-0 pointer-events-none z-10"
+        style={{ width: '22%', background: 'linear-gradient(to right, rgba(10,6,6,0.38), transparent)' }} />
+
+      {/* Indicators — pill dots in view mode, trash buttons in edit mode */}
+      {(isEditMode ? photos.length > 0 : photos.length > 1) && (
+        <div
+          className={`absolute bottom-3 left-0 right-0 flex justify-center gap-2 z-20 ${isEditMode ? 'pointer-events-auto' : 'pointer-events-none'}`}
+          onPointerDown={isEditMode ? e => e.stopPropagation() : undefined}
+        >
+          {photos.map((_, i) => (
+            isEditMode ? (
+              <button key={i}
+                onClick={() => onRemoveCurrent(i)}
+                title={`Remove photo ${i + 1}`}
+                className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200 border ${
+                  i === safeIdx
+                    ? 'bg-red-700/80 border-red-500/50 scale-110'
+                    : 'bg-black/60 border-white/20 hover:bg-red-700/60 hover:border-red-500/40'
+                }`}
+              >
+                <Trash2 size={9} className="text-white" />
+              </button>
+            ) : (
+              <div key={i}
+                className={`rounded-full transition-all duration-500 ${i === safeIdx ? 'w-5 h-1.5 bg-white/90' : 'w-1.5 h-1.5 bg-white/35'}`}
+              />
+            )
+          ))}
+        </div>
+      )}
+
+      {/* Edit controls — add photo only (delete is on the dots above) */}
+      {isEditMode && (
+        <div
+          className="absolute top-10 right-2 z-30"
+          onPointerDown={e => e.stopPropagation()}
+        >
+          <EditableFile onUpload={onAddPhoto} accept="image/*" label="+ Add" />
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Hero() {
   const { content, updateSection, uploadImage, uploadFile } = useContent();
@@ -40,13 +135,11 @@ export default function Hero() {
   const photoX    = useMotionValue(0);
   const photoY    = useMotionValue(0);
   const photoSize = useMotionValue(320);
-  const photoDrag = useDragControls();
 
   // Right image box
   const rightX    = useMotionValue(0);
   const rightY    = useMotionValue(0);
   const rightSize = useMotionValue(300);
-  const rightDrag = useDragControls();
 
   useEffect(() => { heroRef.current = hero; }, [hero]);
 
@@ -73,6 +166,9 @@ export default function Hero() {
   if (!hero) return null;
 
   const update = (field, value) => updateSection('hero', { ...hero, [field]: value });
+
+  // Migrate single rightPhoto → rightPhotos array
+  const rightPhotos = hero.rightPhotos ?? (hero.rightPhoto ? [hero.rightPhoto] : []);
 
   // Reads all motion values and persists everything in one shot (used by drag end + resize end)
   const persistAll = () => {
@@ -185,14 +281,13 @@ export default function Hero() {
 
   const handleRightPhotoUpload = async (f) => {
     const url = await uploadImage(f);
-    // Clamp position to safe bounds now that a real image is loading
-    if (sectionRef.current) {
-      const { width: W, height: H } = sectionRef.current.getBoundingClientRect();
-      const sz = rightSize.get();
-      rightX.set(clamp(rightX.get(), 0, W - sz));
-      rightY.set(clamp(rightY.get(), 0, H - 80));
-    }
-    update('rightPhoto', url);
+    const current = heroRef.current?.rightPhotos ?? (heroRef.current?.rightPhoto ? [heroRef.current.rightPhoto] : []);
+    update('rightPhotos', [...current, url]);
+  };
+
+  const handleRemoveRightPhoto = (i) => {
+    const current = heroRef.current?.rightPhotos ?? (heroRef.current?.rightPhoto ? [heroRef.current.rightPhoto] : []);
+    update('rightPhotos', current.filter((_, idx) => idx !== i));
   };
   const handleCVUpload         = async (f) => { const url = await uploadFile(f);  update('cta1Link', url); };
 
@@ -315,13 +410,11 @@ export default function Hero() {
         <div className="absolute top-0 left-0 bottom-0 z-[5] pointer-events-none" style={{ width: '40%', background: 'linear-gradient(to right, #0a0a0a 45%, rgba(10,10,10,0.9) 65%, rgba(10,10,10,0.5) 82%, transparent 100%)' }} />
 
         {/* Layer 3 · Profile photo
-            dragListener=false → drag only from Move handle
-            z-[30] in edit mode → sits above z-[20] text panel
-            width/x/y are motion values → all updates bypass React reconciler */}
+            Standard drag on motion.div — image area blocks propagation so clicking
+            the photo opens file picker; Move handle lets events through to start drag.
+            Width/x/y are motion values → all updates bypass React reconciler. */}
         <motion.div
           drag={isEditMode}
-          dragControls={photoDrag}
-          dragListener={false}
           dragMomentum={false}
           dragElastic={0}
           onDragEnd={onPhotoDragEnd}
@@ -330,18 +423,22 @@ export default function Hero() {
             position: 'absolute', left: 0, top: 0,
             x: photoX, y: photoY, width: photoSize,
             zIndex: isEditMode ? 30 : 10,
+            cursor: isEditMode ? 'grab' : 'default',
+            touchAction: 'none',
             pointerEvents: isEditMode ? 'auto' : 'none',
           }}
         >
-          <EditableImage src={hero.photo} alt="Shoaib Zafar" className="w-full h-auto block" onUpload={handlePhotoUpload} />
+          {/* Stop propagation on image so clicking it doesn't start drag */}
+          <div onPointerDown={isEditMode ? e => e.stopPropagation() : undefined}>
+            <EditableImage src={hero.photo} alt="Shoaib Zafar" className="w-full h-auto block" onUpload={handlePhotoUpload} />
+          </div>
 
           {isEditMode && (
             <>
-              {/* Drag handle */}
+              {/* Move handle — no stopPropagation, so pointerdown bubbles to motion.div and starts drag */}
               <div
-                className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm rounded-full p-2 cursor-grab active:cursor-grabbing"
+                className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm rounded-full p-2 cursor-grab active:cursor-grabbing pointer-events-auto"
                 style={{ touchAction: 'none' }}
-                onPointerDown={e => { e.preventDefault(); photoDrag.start(e); }}
               >
                 <Move size={14} className="text-white" />
               </div>
@@ -351,12 +448,10 @@ export default function Hero() {
           )}
         </motion.div>
 
-        {/* Layer 3b · Right image box — only rendered when image exists OR in edit mode */}
-        {(hero.rightPhoto || isEditMode) && (
+        {/* Layer 3b · Right photo slider — hidden when empty and not in edit mode */}
+        {(rightPhotos.length > 0 || isEditMode) && (
           <motion.div
             drag={isEditMode}
-            dragControls={rightDrag}
-            dragListener={false}
             dragMomentum={false}
             dragElastic={0}
             onDragEnd={onRightDragEnd}
@@ -365,42 +460,30 @@ export default function Hero() {
               position: 'absolute', left: 0, top: 0,
               x: rightX, y: rightY, width: rightSize,
               zIndex: isEditMode ? 30 : 15,
+              cursor: isEditMode ? 'grab' : 'default',
+              touchAction: 'none',
               pointerEvents: isEditMode ? 'auto' : 'none',
             }}
           >
-            {hero.rightPhoto ? (
-              <EditableImage src={hero.rightPhoto} alt="Hero right" className="w-full h-auto block rounded-lg" onUpload={handleRightPhotoUpload} />
-            ) : (
-              /* Placeholder — edit mode only, no image yet */
-              <div className="border-2 border-dashed border-white/20 rounded-lg flex flex-col items-center justify-center gap-2 bg-white/[0.03]" style={{ height: '300px' }}>
-                <p className="text-white/30 text-xs pointer-events-none">Right image box</p>
-                <EditableFile onUpload={handleRightPhotoUpload} accept="image/*" label="Upload Image" />
-              </div>
-            )}
+            {/* stopProp wrapper prevents slider clicks from starting drag */}
+            <div onPointerDown={isEditMode ? e => e.stopPropagation() : undefined}>
+              <RightPhotoSlider
+                photos={rightPhotos}
+                isEditMode={isEditMode}
+                onAddPhoto={handleRightPhotoUpload}
+                onRemoveCurrent={handleRemoveRightPhoto}
+              />
+            </div>
 
             {isEditMode && (
               <>
-                {/* Drag handle */}
+                {/* Move handle — no stopProp, bubbles to motion.div, starts drag */}
                 <div
                   className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm rounded-full p-2 cursor-grab active:cursor-grabbing"
                   style={{ touchAction: 'none' }}
-                  onPointerDown={e => { e.preventDefault(); rightDrag.start(e); }}
                 >
                   <Move size={14} className="text-white" />
                 </div>
-
-                {/* Remove image button — only when image is set */}
-                {hero.rightPhoto && (
-                  <button
-                    className="absolute top-2 right-2 bg-black/60 backdrop-blur-sm rounded-full p-2 hover:bg-red-700/80 transition-colors"
-                    onClick={() => update('rightPhoto', null)}
-                    title="Remove image"
-                  >
-                    <Trash2 size={14} className="text-white" />
-                  </button>
-                )}
-
-                {/* Corner resize handles */}
                 <ResizeHandles sizeMV={rightSize} xMV={rightX} yMV={rightY} />
               </>
             )}

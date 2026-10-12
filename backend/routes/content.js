@@ -5,9 +5,12 @@ const fs = require('fs');
 const db = require('../db/database');
 const auth = require('../middleware/auth');
 
+// Mirror the same UPLOADS_PATH logic from server.js
+const UPLOADS_DIR = process.env.UPLOADS_PATH || path.join(__dirname, '..', 'uploads');
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, '..', 'uploads'));
+    cb(null, UPLOADS_DIR);
   },
   filename: (req, file, cb) => {
     const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
