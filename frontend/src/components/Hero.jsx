@@ -465,7 +465,31 @@ export default function Hero() {
             pointerEvents: isEditMode ? 'auto' : 'none',
           }}
         >
-          <EditableImage src={hero.photo} alt="Shoaib Zafar" className="w-full h-auto block" onUpload={handlePhotoUpload} />
+          <div style={{ position: 'relative' }}>
+            {/* Warm ground glow — ties figure to hero's colour atmosphere */}
+            {!isEditMode && (
+              <div className="absolute pointer-events-none" style={{
+                bottom: '-6%', left: '5%', right: '5%', height: '32%',
+                background: 'radial-gradient(ellipse, rgba(139,26,16,0.30) 0%, transparent 70%)',
+                filter: 'blur(22px)',
+                zIndex: 0,
+              }} />
+            )}
+
+            {/* drop-shadow traces the transparent-PNG silhouette for natural depth */}
+            <div style={!isEditMode ? { filter: 'drop-shadow(0 28px 55px rgba(0,0,0,0.65)) drop-shadow(0 0 22px rgba(139,26,16,0.12))' } : undefined}>
+              <EditableImage src={hero.photo} alt="Shoaib Zafar" className="w-full h-auto block" onUpload={handlePhotoUpload} />
+            </div>
+
+            {/* Bottom fade — blends feet into hero bg instead of hard-cutting */}
+            {!isEditMode && (
+              <div className="absolute bottom-0 left-0 right-0 pointer-events-none" style={{
+                height: '26%',
+                background: 'linear-gradient(to bottom, transparent 0%, rgba(10,10,10,0.55) 55%, rgba(10,10,10,0.90) 100%)',
+                zIndex: 2,
+              }} />
+            )}
+          </div>
 
           {isEditMode && (
             <>

@@ -150,13 +150,45 @@ function Bubble({ item, i, isEditMode, isSelected, containerRef, onSelect, onUpd
 
 /* ── PhotoCard (image testimonial) ─────────────────────────────────────────── */
 function PhotoCard({ item, i, isEditMode, isSelected, containerRef, onSelect, onUpdateItem, onPhotoUpload, onRemove }) {
-  const didMove   = useRef(false);
   const [liveSize, setLiveSize] = useState(null);
+  const [livePos,  setLivePos]  = useState(null);
   const posX    = typeof item.posX === 'number' ? item.posX : (CARD_DEFAULTS[i % CARD_DEFAULTS.length]?.posX ?? 10 + i * 20);
   const posY    = typeof item.posY === 'number' ? item.posY : (CARD_DEFAULTS[i % CARD_DEFAULTS.length]?.posY ?? 5);
   const size    = liveSize ?? (typeof item.size === 'number' ? item.size : 220);
   const rotation = CARD_ROTATIONS[i % CARD_ROTATIONS.length];
 
+  // Drag — only initiated from the Move handle
+  const startDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!containerRef.current) return;
+    const box      = containerRef.current.getBoundingClientRect();
+    const startX   = e.clientX;
+    const startY   = e.clientY;
+    const startLeft = (posX / 100) * box.width;
+    const startTop  = (posY / 100) * box.height;
+    const onMove = (me) => {
+      setLivePos({
+        left: Math.max(0, Math.min(box.width  - size, startLeft + (me.clientX - startX))),
+        top:  Math.max(0, Math.min(box.height - size, startTop  + (me.clientY - startY))),
+      });
+    };
+    const onUp = (me) => {
+      const newLeft = Math.max(0, Math.min(box.width  - size, startLeft + (me.clientX - startX)));
+      const newTop  = Math.max(0, Math.min(box.height - size, startTop  + (me.clientY - startY)));
+      setLivePos(null);
+      onUpdateItem({
+        posX: parseFloat(((newLeft / box.width)  * 100).toFixed(2)),
+        posY: parseFloat(((newTop  / box.height) * 100).toFixed(2)),
+      });
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  };
+
+  // Resize — only initiated from SE corner handle
   const startResize = (e) => {
     e.stopPropagation();
     e.preventDefault();
@@ -176,31 +208,9 @@ function PhotoCard({ item, i, isEditMode, isSelected, containerRef, onSelect, on
     window.addEventListener('pointerup', onUp);
   };
 
-  const handleDragEnd = (e, info) => {
-    if (!containerRef.current || !didMove.current) return;
-    const box     = containerRef.current.getBoundingClientRect();
-    const curLeft = (posX / 100) * box.width;
-    const curTop  = (posY / 100) * box.height;
-    const newLeft = Math.max(0, Math.min(box.width  - size, curLeft + info.offset.x));
-    const newTop  = Math.max(0, Math.min(box.height - size, curTop  + info.offset.y));
-    onUpdateItem({
-      posX: parseFloat(((newLeft / box.width)  * 100).toFixed(2)),
-      posY: parseFloat(((newTop  / box.height) * 100).toFixed(2)),
-    });
-  };
-
   return (
     <motion.div
-      key={`pc${i}-${Math.round(posX)}-${Math.round(posY)}`}
-      drag={isEditMode}
-      dragMomentum={false}
-      dragElastic={0}
-      dragConstraints={containerRef}
-      onDragStart={() => { didMove.current = false; }}
-      onDrag={() => { didMove.current = true; }}
-      onDragEnd={handleDragEnd}
-      onClick={() => { if (isEditMode && !didMove.current) onSelect(); }}
-      whileDrag={{ scale: 1.04, zIndex: 99 }}
+      onClick={() => { if (isEditMode) onSelect(); }}
       initial={isEditMode ? { opacity: 1 } : { opacity: 0, y: 20, rotate: rotation }}
       whileInView={isEditMode ? undefined : { opacity: 1, y: 0, rotate: rotation }}
       viewport={{ once: true, margin: '-60px' }}
@@ -208,16 +218,14 @@ function PhotoCard({ item, i, isEditMode, isSelected, containerRef, onSelect, on
       transition={{ duration: 0.6, delay: isEditMode ? 0 : i * 0.15 }}
       style={{
         position: 'absolute',
-        left: `${posX}%`,
-        top:  `${posY}%`,
+        left: livePos ? livePos.left : `${posX}%`,
+        top:  livePos ? livePos.top  : `${posY}%`,
         width: size,
         zIndex: isSelected ? 20 : isEditMode ? 10 : 1,
-        cursor: isEditMode ? 'grab' : 'default',
-        touchAction: 'none',
         rotate: rotation,
+        cursor: 'default',
       }}
     >
-      {/* Rotation wrapper — separate from drag outer div */}
       <div style={{ position: 'relative' }}>
         {/* Card surface */}
         <div
@@ -230,29 +238,35 @@ function PhotoCard({ item, i, isEditMode, isSelected, containerRef, onSelect, on
             transition: 'box-shadow 0.2s',
           }}
         >
-          {/* Image — stopProp prevents drag on click, lets file picker open */}
-          <div onPointerDown={isEditMode ? e => e.stopPropagation() : undefined}>
-            {item.photo ? (
-              <EditableImage
-                src={item.photo}
-                alt={item.name || 'Testimonial'}
-                className="w-full h-auto block"
-                onUpload={onPhotoUpload}
-              />
-            ) : isEditMode ? (
-              <div className="w-full h-36 flex flex-col items-center justify-center gap-2"
-                style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                <ImageIcon size={20} className="text-white/15" />
-                <EditableFile onUpload={onPhotoUpload} accept="image/*" label="Upload screenshot" />
-              </div>
-            ) : null}
-          </div>
-
+          {item.photo ? (
+            <EditableImage
+              src={item.photo}
+              alt="Testimonial"
+              className="w-full h-auto block"
+              onUpload={onPhotoUpload}
+            />
+          ) : isEditMode ? (
+            <div className="w-full h-36 flex flex-col items-center justify-center gap-2"
+              style={{ background: 'rgba(255,255,255,0.02)' }}>
+              <ImageIcon size={20} className="text-white/15" />
+              <EditableFile onUpload={onPhotoUpload} accept="image/*" label="Upload screenshot" />
+            </div>
+          ) : null}
         </div>
 
-        {/* Edit overlays — outside overflow:hidden so they extend past card edge */}
+        {/* Edit overlays — outside overflow:hidden */}
         {isEditMode && (
           <>
+            {/* Move handle — ONLY this initiates drag */}
+            <div
+              className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm rounded-full p-2 z-30 cursor-grab active:cursor-grabbing"
+              style={{ touchAction: 'none' }}
+              onPointerDown={startDrag}
+            >
+              <Move size={12} className="text-white" />
+            </div>
+
+            {/* Trash */}
             <button
               className="absolute -top-2 -right-2 w-7 h-7 bg-red-600/90 hover:bg-red-500 rounded-full flex items-center justify-center shadow-lg z-30 transition-colors"
               onPointerDown={e => e.stopPropagation()}
@@ -260,20 +274,17 @@ function PhotoCard({ item, i, isEditMode, isSelected, containerRef, onSelect, on
             >
               <Trash2 size={12} className="text-white" />
             </button>
+
             {/* SE resize handle */}
             <div
               className="absolute w-3.5 h-3.5 bg-white border-2 border-red-700 rounded-full z-30 cursor-se-resize"
               style={{ bottom: -6, right: -6, touchAction: 'none' }}
               onPointerDown={startResize}
             />
+
             {isSelected && (
               <div className="absolute -top-2 -left-2 w-6 h-6 bg-accent rounded-full flex items-center justify-center shadow-lg z-20 pointer-events-none">
                 <Check size={11} className="text-white" />
-              </div>
-            )}
-            {!isSelected && (
-              <div className="absolute top-2 left-2 bg-black/40 backdrop-blur-sm rounded-full p-1.5 z-20 pointer-events-none">
-                <Move size={10} className="text-white/70" />
               </div>
             )}
           </>
