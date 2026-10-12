@@ -438,6 +438,23 @@ export default function Testimonials() {
 
   useEffect(() => { if (!isEditMode) setSelectedIdx(null); }, [isEditMode]);
 
+  // Canvas grows to fit all items — same height in both modes to prevent
+  // position shift when toggling edit mode (items use posY% of container height)
+  const canvasHeight = useMemo(() => {
+    if (!localItems) return 600;
+    const PADDING = 100;
+    const MIN     = 600;
+    let h = MIN;
+    for (const t of localItems) {
+      const posY  = typeof t.posY  === 'number' ? t.posY  : 10;
+      const size  = typeof t.size  === 'number' ? t.size  : 220;
+      const itemH = t.type === 'image' ? size * 1.3 : size;
+      const frac  = (100 - posY) / 100;
+      if (frac > 0.05) h = Math.max(h, Math.ceil(itemH / frac) + PADDING);
+    }
+    return h;
+  }, [localItems]);
+
   if (!testimonials || !localItems) return null;
 
   const scheduleSave = () => {
@@ -495,23 +512,6 @@ export default function Testimonials() {
   };
 
   const selectedItem = selectedIdx !== null ? localItems[selectedIdx] : null;
-
-  // Canvas grows to fit all items — same height in both modes to prevent
-  // position shift when toggling edit mode (items use posY% of container height)
-  const canvasHeight = useMemo(() => {
-    const PADDING = 100;
-    const MIN     = 600;
-    let h = MIN;
-    for (const t of localItems) {
-      const posY  = typeof t.posY  === 'number' ? t.posY  : 10;
-      const size  = typeof t.size  === 'number' ? t.size  : 220;
-      // photo cards: estimate height as 1.3× width; bubbles: size = diameter
-      const itemH = t.type === 'image' ? size * 1.3 : size;
-      const frac  = (100 - posY) / 100;
-      if (frac > 0.05) h = Math.max(h, Math.ceil(itemH / frac) + PADDING);
-    }
-    return h;
-  }, [localItems]);
 
   return (
     <section
