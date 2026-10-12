@@ -256,6 +256,7 @@ const initialContent = {
   },
 
   testimonials: {
+    heading: 'TESTIMONIALS',
     items: [
       {
         id: 2,
