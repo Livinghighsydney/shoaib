@@ -503,10 +503,10 @@ export default function Hero() {
 
             {isEditMode && (
               <>
-                {/* Move handle — raw pointermove drag, only this handle moves the box */}
+                {/* Move handle — z-[50] beats the z-30 numbered indicators inside the slider */}
                 <div
                   className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm rounded-full p-2 cursor-grab active:cursor-grabbing"
-                  style={{ touchAction: 'none' }}
+                  style={{ touchAction: 'none', zIndex: 50 }}
                   onPointerDown={startRightDrag}
                 >
                   <Move size={14} className="text-white" />
